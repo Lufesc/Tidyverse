@@ -1,0 +1,769 @@
+---
+title: "Tidyverse"
+subtitle: "Maestría en Estadística Aplicada - Módulo 5: Computacional I"
+author: 
+- name: "Luis Fernando Escobar"
+  affiliation: "Universidad Autónoma Gabriel René Moreno Business School"
+date: "`r format(Sys.Date())`"
+output: 
+  #html_document:
+  prettydoc::html_pretty:
+    toc: true
+    number_sections: true
+    #toc_float: true
+    theme: cayman 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(psych)
+library(tidyverse)
+library(lmtest)
+library(stargazer)
+library(haven)
+
+```
+
+# Tablas de datos
+
+## ¿Qué es una tabla de datos?
+
+Responder a esta pregunta se siente muy parecido a responder a “¿qué es un vaso de agua?”, parece ser difícil hacerlo sin caer en algo de redundancia. Pero bueno, aquí vamos:
+
+> Una tabla de datos es una representación de cualquier tipo de información en forma tabular, es decir, ordenada en filas y columnas.
+
+Las tablas de datos que en realidad nos interesan son aquellas que tienen información representada por números o cadenas de caracteres (o *strings*).
+
+## Tablas tidy
+
+Una tabla es simplemente una ilustración de determinados datos. Esto sugiere que podría existir más de una tabla para ilustrar a un grupo de datos.
+
+Por ejemplo, veamos la siguiente tabla que muestra los hallazgos de dos pruebas médicas realizadas a tres individuos:
+
+| Individuos | Examen 1 | Examen 2   |
+| :------- | :------: | -------: |
+| Juan     | 10       | 2   |
+| Clara    | 15       | 5  |
+| Lin      | 9        | 4  |
+
+Otra manera de representar la misma información es simplemente trasponiendo la tabla anterior (cambiando las filas por columnas):
+
+| Pruebas médicas | Juan | Clara   |Lin   |
+| :-------------- | :--: | ------: | ---: |
+| Examen 1        | 10   | 15      |9     |
+| Examen 2        | 2    | 5       |4     |
+
+Una tercera manera, que puede parecer un poco menos eficiente, es la siguiente:
+
+| Nombre | Examen | Resultado   |
+| :------- | :------: | -------: |
+| Juan     | Examen 1 | 10   |
+| Clara    | Examen 1 | 15  |
+| Lin      | Examen 1 | 9  |
+| Juan     | Examen 2 | 2   |
+| Clara    | Examen 2 | 5  |
+| Lin      | Examen 2 | 4  |
+
+En esta tabla parece que estuviésemos repitiendo información, sin embargo tiene una característica que la hacen mucho más sencilla de manipular, analizar y visualizar:
+
+> Cada columna corresponde a una variable y cada fila corresponde a una observación.
+
+Una tabla de datos con esta característica se dice *tidy* (ordenada).
+
+La importancia de este tipo de tablas radica principalmente en que proporcionan una forma estandarizada de representar datos. El responsable del análisis (o incluso un ordenador) tiene la capacidad de extraer con facilidad cualquier variable que resulte de interés.
+
+En los ejemplos previamente presentados, en las dos primeras versiones de las tablas no se puede determinar (a no ser que alguien lo explique con antelación) dónde se ubican las variables y las observaciones. Además, en una tabla *tidy*, es evidente la función de las filas y columnas.
+
+## Bienvenido al tidyverse
+
+A partir de ahora, utilizaremos el paquete [tidyverse](https://www.tidyverse.org/). De hecho, *tidyverse* es un grupo de paquetes que facilitan la exploración, modificación y visualización de datos de manera intuitiva y sólida. Nota que el nombre del paquete hace referencia a las tablas *tidy*, esto no es casual.
+
+Es posible interpretar *tidyverse* como una enorme caja de almacenamiento de herramientas, en la que se encuentran cajas más pequeñas (paquetes) con herramientas específicas para determinadas actividades.
+
+Aunque faltan algunas secciones para comenzar a utilizar de manera efectiva *tidyverse*, es provechoso que conozcas cómo cargarlo en R.
+
+* En primer lugar, se necesita instalar tidyverse mediante el siguiente comando (que debes ejecutar en la Consola):
+
+```{r , eval=FALSE}
+install.packages("tidyverse")
+```
+
+Esto puede tomar un poco tiempo (R descargará el paquete desde internet y lo instalará), pero sólo debemos hacerlo una vez.
+
+* Luego, cada vez que se trabaje con *tidyverse*, cargamos el paquete con el comando (esto puede ser ejecutado tanto en la Consola como en un script o archivo Rmarkdown):
+
+```{r , eval=FALSE}
+library(tidyverse)
+```
+
+Se notará que después de cargar la paquetería aparecen algunos mensajes y advertencias, pero **no son nada malo**. 
+
+> **Importante**: En el resto de este capítulo asumiremos que tidyverse ya ha sido cargado
+
+### Recetas y cañerías (pipes)
+
+Antes de profundizar en las particularidades, es crucial discutir la organización del trabajo en *tidyverse*. Para ello, se toma como referencia un ejemplo de cocina: elaborar panqueques.
+
+Si se intenta encontrar una receta para panqueques, se puede encontrar con algo que sea más o menos de esta manera:
+
+> **Ingredientes** 
+> 
+> * 200 gr de harina 
+>
+> *	2 huevos
+>
+> *	1 cucharada de polvos de hornear
+>
+> *	50 ml de aceite
+>
+> *	1 pizca bicarbonato de sodio
+>
+> *	1/2 cucharadita de sal
+>
+> *	300 ml de leche
+>
+> *	30 gr de azúcar
+> 
+> **Pasos:**
+> 
+> 1) Volcar todos los ingredientes en un bowl y batir a potencia máxima por un minuto.
+> 
+> 2) Dejar la mezcla en la heladera por media hora.
+> 
+> 3) En una sartén con manteca, ir volcando en el medio un poco de mezcla. Dar vuelta cuando aparezcan burbujitas.
+
+La receta se compone de ingredientes y procedimientos (pasos). Es habitual para alguien que haya cocinado alguna vez, para que una receta tenga éxito, además de asegurarse de contar con los ingredientes necesarios, es crucial tener bien definidos los pasos a seguir y en qué secuencia llevarlos a cabo. Es inútil guardar la mezcla en el refrigerador si aún no hemos combinado los ingredientes en el bolo.
+
+Dentro del ámbito informático, estos componentes fundamentales de una receta (ingredientes y pasos) se conocen como entradas (o *input*) y algoritmo, respectivamente.
+
+Al examinar o manipular datos, también se debe tener claro cuáles son los componentes y procedimientos. Por ejemplo, en esta ocasión vinculado con datos, se dispone de una tabla de información con los nombres, naciones de procedencia y edades de un conjunto de individuos:
+
+| Nombre |	País |	Edad |
+| ------- | :-----: | -----: |
+| Bernarda |	Chile |	25 |
+| Marcia |	Perú |	23 |
+| Tito |	Perú |	40 |
+| Diego |	Chile |	39 |
+| Esteban |	Costa Rica |	27 |
+
+Frente a la interrogante: ¿cuál es la edad media de los individuos de Chile en esta tabla?, tal vez la respuesta rápida seria: "¡Fácil!, suficiente con calcular la edad promedio de Bernarda y Diego". No obstante, si deseamos dar respuesta a esta pregunta para cualquier tabla con datos parecidos (que tal vez contenga miles de individuos), sería conveniente organizar nuestras ideas mediante una receta:
+
+
+> **Ingredientes** 
+>
+> * Tabla de datos con países de origen y edades.
+>
+> **Pasos**  
+>
+> 1.	Filtrar a todas aquellas personas cuyo país de origen sea Chile.  
+>
+> 2.	Calcular el promedio de las edades de dichas personas. 
+
+Esta receta puede asemejarse bastante a la idea inicial, pero presenta algunas diferencias:
+
+* No se basa en la tabla que se introduzca (antes se hizo referencia a "Bernarda" y "Diego").
+* Puede ser comprendida con facilidad por alguien más, o incluso por un ordenador.
+
+Al emplear *tidyverse*, las instrucciones que se proporciona a R también poseerá esta estructura de receta, aunque en un formato específico. En *tidyverse*, la receta previa tendría una apariencia más o menos de esta manera:
+
+```{r , eval=FALSE}
+tabla_de_datos %>% 
+  filter(País == "Chile") %>% 
+  summarize(mean(Edad))
+```
+
+¡No se preocupe!, no se busca que se comprenda esto aún. Posteriormente, se detallara qué implica cada segmento de esta serie de comandos u órdenes. **Lo crucial es que identifiques los componentes fundamentales de las instrucciones**:
+
+* La primera línea tiene los ingredientes, la tabla de datos.
+* La segunda línea realiza el primer paso de la receta: filtrar (*filter*) a las personas cuyo país de origen sea Chile.
+* La tercera línea realiza el segundo paso de la receta: calcular (*summarize* o resumir) el promedio de la edad de dichas personas (*mean* o media).
+
+Se observa que existen símbolos peculiares (`%>%`) que se encuentran al final de las dos primeras líneas. En *tidyverse*, estos símbolos se conocen como pipes (cañerías) y se utilizan para vincular las diferentes partes de una receta. En otras palabras, cualquier cosa que surja de un paso de la receta es reorientada por el pipe hacia el paso siguiente:
+
+![Estructuras de pipes](img/pipes.png)
+
+Una buena manera de leer estas cañerías al momento de revisar tu código es usando la expresión “y luego”, así en nuestro ejemplo el código se leería como:
+
+“*Tomamos la tabla de datos* **y luego** *filtramos a las personas cuyo país de origen es Chile.* **Y luego**, *calculamos el promedio de la edad de dichas personas.*”
+
+De ahora en adelante ten siempre presente esta forma de pensar al analizar y manipular tus datos.
+
+### Manipulación de datos ([dplyr](https://dplyr.tidyverse.org/))
+
+Una de las cajas pequeñas que conforman *tidyverse* es *dplyr*, un paquete especializado en manipular datos ([hoja](https://nyu-cdsc.github.io/learningr/assets/data-transformation.pdf) de [trucos](https://www.rstudio.com/wp-content%2Fuploads%2F2015%2F02%2Fdata-wrangling-cheatsheet.pdf%2F)). Su nombre proviene de la palabra plyer (alicate), así que se puede decir que **dplyr es la caja de alicates para filtrar, modificar y resumir datos**.
+
+En particular, *dplyr* es en realidad una gramática de manipulación de datos, que a través de “verbos” permite realizar la mayoría de los pasos en una receta de manipulación de una tabla de datos. Los principales verbos de dplyr son:
+
+* `filter()` para **filtrar** filas, reduciendo la tabla a un subconjunto de filas que satisfaga alguna característica de interés.
+* `select()` para **seleccionar** variables (columnas), reduciendo la tabla a un subconjunto de columnas que satisfaga alguna característica de interés.
+* `summarize()` para **resumir** todos los valores de una columna (o varias) en un solo valor.
+* `mutate()` para **agregar** nuevas variables a partir de variables existentes, modificar los valores en columnas ya existentes, o eliminar columnas.
+* `arrange()` para **cambiar** el orden de filas (organizar) según algún criterio.
+
+En general, se puede referir a estos verbos como comandos o funciones de dplyr. Nota además que ya nos encontramos con dos de estos comandos en el ejemplo anterior `(filter(País == "Chile") y summarize(mean(Edad)))`.
+
+## Cargado de tablas
+
+No es posible razonar cuantitativamente con datos sin tener datos, es similar a navegar sin agua. Iniciamos con el uso de R para cargar información.
+
+Por lo general, los datos provienen de diversas fuentes, que pueden ser:
+
+* Data contenida en un paquete de R,
+* Data guardada en un disco duro local o remoto,
+* Data guardada en servidores en línea.
+
+### Cargado desde un archivo
+
+Al cargar datos que están almacenados en un archivo, hay dos preguntas a responder:
+
+* ¿En qué formato están almacenados los datos del archivo?
+* ¿Dónde está ubicado el archivo?
+
+Hay muchas formas en que es posible almacenar datos en un archivo. Algunos de los formatos más comunes son:
+
+* El formato `csv`. La sigla “csv” proviene de “comma separated values” (valores separados por coma).
+* El formato `xls`. Este corresponde a un formato de archivos usado por Microsoft Excel hasta el año 2006.
+* El formato `xlsx`. Este corresponde a un formato de archivos usado por Microsoft Excel a partir del año 2007. Es un formato más moderno basado en Open XML, otro formato más general aún.
+* Formatos propietaros de sistemas de software para el análisis de datos como `dta` (Stata), `sav` (SPSS), `sas7bdat`, `sd7`, `sd2`, `ssd01`(SAS), y otros.
+
+Lo importante es que R puede leer todos los formatos antes mencionados, y muchos otros. Los más comunes de estos son CSV y XLS.
+
+Para cargar un archivo desde excel:
+
+```{r , eval=FALSE}
+library(readxl)
+xlsx_example <- read_excel("datasets.xlsx")
+```
+
+Es posible leer de distintos sheets, o leer parte de un sheet, etc. Mayores informaciones en: <https://readxl.tidyverse.org>. 
+
+Para cargar un archivo desde un archivo CSV usamos:
+
+```{r , eval=FALSE}
+notas <- read_csv("data/mis-datos-secretos.csv")
+```
+
+Observa que en el ejemplo anterior, además de indicar el nombre del archivo, se indica el directorio en que está ubicado. En este caso, el archivo está **dentro de un directorio llamado `data`**.
+
+Prueba cargando el archivo `ejemplo-notas.csv`, que está disponible en el siguiente [link](https://raw.githubusercontent.com/rocarvaj/rcd1-uai/main/data/ejemplo-notas.csv). De hecho, se usa este archivo en el resto del presente capítulo.
+
+Si te encuentras trabajando en *Posit Cloud*, lo que en realidad estás haciendo es ejecutar R en un computador ubicado remotamente. Esto significa que para cargar un archivo de datos ubicado en tu computador, será necesario primero subir el archivo a *Posit Cloud*. Para esto:
+
+1. En el navegador de archivos de Posit Cloud, haz click en *Upload*:
+
+![Navegador de archivos](img/navegador-archivos.png){width='300px'}
+
+2. Selecciona el, haciendo click en *Choose File* (lo cual abrirá un navegador de archivos en tu computador):
+
+![Subir archivos a Posit Cloud](img/subir-archivo.png){width='300px'}
+
+3. El archivo aparecerá en el navegador de archivos de RStudio:
+
+![Archivos disponible en Posit Cloud](img/archivo-subido.png){width='300px'}
+
+4. Ya podrás cargar el archivo usando:
+
+```{r , eval=FALSE}
+notas <- read_csv("ejemplo-notas.csv")
+```
+
+### Cargando desde un archivo en internet
+
+Además, se puede cargar información desde un archivo accesible en línea. Para lograrlo, es suficiente conocer la dirección (o URL) del archivo correspondiente. Por ejemplo, se podría hacer una carga de la base de datos `ejemplo-notas.csv` mediante el comando:
+
+```{r }
+library(tidyverse)
+notas <- read_csv("https://raw.githubusercontent.com/Lufesc/CursoEstadisticaR/refs/heads/main/ejemplo-notas.csv")
+```
+
+### Cargado desde un paquete de R
+
+Para practicar, R incluye una amplia variedad de bases de datos. Para consultar el listado de las bases de datos que se incorporan, se puede emplear el comando `data()`. Inmediatamente se presentaran  una extensa lista de bases de datos, con sus correspondientes nombres y una descripción breve.
+
+```{r , eval=FALSE}
+data()
+```
+
+## Inspección de tablas
+
+En esta sección, se pretende realizar el manejo de R y tidyverse para examinar y explorar la tabla de datos, es decir, determinar rápidamente cuantas variables y observaciones tiene, incluyendo los valores que toman. Para ejemplificar lo mencionado se utilizara la base de datos `notas` que se cargó previamente.
+
+Esta base de datos tienes las características de algunos alumnos de un curso ficticio, junto con sus notas y asistencia.
+
+Se puede observar la base de datos simplemente escribiendo su nombre del objeto:
+
+```{r }
+notas
+```
+
+Otra forma de ver la tabla es usando el comando `View()`:
+
+```{r}
+View(notas)
+```
+
+Esto provoca que la tabla se despliegue en la pantalla de RStudio. Es evidente que es **una interfaz bastante conocida y similar a lo que se observa al utilizar una hoja de cálculo de Excel**. No obstante, en esta vista no hay mucho que realizar, más que dar una mirada general a los datos.
+
+Para visualizar de manera rápida algunas propiedades de la tabla de datos, se dispone de los comandos que se detallan a continuación. Sin embargo, si en una primera lectura de la descripción no te resulta muy clara, ya después se mostrara ejemplos de su aplicación.
+
+*  `dim()`: Indica las dimesiones de la tabla (cantidad de filas y columnas).
+* `names()`: Facilita la identificación de las columnas en la tabla.
+* `glimpse()`: Ofrece una lista de las variables acompañada de algunos datos estadísticos fundamentales.
+* `distinct()`: Ofrece la serie de valores exclusivos que ocupan una o varias columnas.
+* `count()`: Registra la cantidad de valores exclusivos que ocupan una o varias columnas.
+
+### Ejemplificación
+
+Se inspeccipona la base de datos `notas`.
+
+Primeramente, se determina el número de filas (observaciones) y columnas (variables) que esta base tiene.
+
+```{r}
+notas %>% dim()
+```
+
+Se puede apreciar que tiene 10 filas (alumnos), y 11 columnas (variables).
+
+Por otra parte, e puede conocer el nombre de estas 11 columnas usando el comando `names`.
+
+```{r}
+notas %>% names()
+```
+
+Al parecer la tabla tiene las notas de los alumnos en 2 pruebas, 3 tareas y el examen. Además, hay una variable que tiene la asistencia de cada alumnos a las clases.
+
+Se puede suponer que nos interesa explorar la variable `País` con mayor profundidad. Entonces se puede empezar viendo qué valores puede tomar esta variable, usando el método `distinct`.
+
+```{r}
+notas %>% distinct(País) # También podríamos haber hecho distinct(notas, País)
+```
+
+Esto nos indica que la variable `País` puede tomar 5 valores posibles (existen estudiantes de 5 países). Si deseamos observar con mayor profundidad la distribución de estos valores, se puede utilizar la función `count`.
+
+```{r}
+notas %>% count(País, sort=TRUE) # se agrega sort=TRUE para ordenar de mayor a menor las frecuencias
+```
+
+Se puede apreciar que la mayor cantidad de alumnos provienen de Chile y Costa Rica.
+
+Si nos interesa observar, por ejemplo, la cantidad de observaciones asociadas a cada valor de `País` y `Género`, también se puede utilizar `count`.
+
+```{r}
+notas %>% count(País, Género, sort=TRUE)
+```
+
+Así pues, las combinaciones más frecuentes de `País` y `Género` en la clase son: mujeres chilenas, hombres costarricenses y mujeres peruanas.
+
+Estas funciones son complementarias y pueden combinarse en flujos de trabajo de análisis de datos para manejar y explorar datos de manera efectiva en RStudio:
+
+* `dim()` y `names()`: Obtener una descripción general de la estructura.
+* `glimpse()`: Inspeccionar datos de manera rápida y detallada.
+* `distinct()`: Limpiar datos duplicados.
+* `count()`: Resumir frecuencias o patrones dentro de las variables.
+
+## Subconjuntos de filas
+
+Una actividad habitual al examinar una tabla de datos **es elegir o buscar ciertas observaciones**. Para este fin, se emplea la función `filter()` de `dplyr`.
+
+Por ejemplo, si se pretende elegir únicamente a las alumnas del curso, se puede hacer lo siguiente:
+
+```{r}
+notas %>% filter(Género == "Femenino")
+```
+
+Es evidente que el resultado de este comando es una tabla de datos, aunque solo incluye filas relacionadas con las alumnas del curso.
+
+La configuración habitual en la que se emplea este comando es:
+
+> datos %>% filter(`<condición>`)
+
+donde `<condición>` es alguna condición sobre ciertas variables que tienen que satisfacer las filas a seleccionar, por ejemplo, “alumnos que hayan obtenido nota mayor o igual a 4.0 en la Prueba 2”.
+
+### Subconjuntos por valor
+
+Para crear las condiciones que nos facilitarán la elección de filas, se empleará los comparadores, operadores y comandos siguientes:
+
+* `>, <, >=, <=, ==`: Comparadores de orden.
+* `|, &, xor, !`: Operadores lógicos.
+* `between`: Permite identificar valores que caen en un rango determinado.
+* `str_detect`: Detectar un string dentro de una variable.
+* `%in%`: Condición de pertenencia a una colección de valores.
+
+**Ejemplos**
+
+Ahora se puede ver qué alumnas aprobaron la Prueba 1 (obtuvieron una nota mayor o igual a 4.0). Es decir, la condición que buscamos es “alumna” y “nota en Prueba 1 mayor o igual a 4.0”.
+
+```{r}
+notas %>% filter(Género == "Femenino" & `Prueba 1` >= 4.0) 
+```
+
+Aclarar que se puede obtener el mismo resultado usando cualquiera de los siguientes comandos:
+
+```{r}
+notas %>% filter(Género == "Femenino" & `Prueba 1` >= 4.0)
+notas %>% filter(Género == "Femenino", `Prueba 1` >= 4.0)
+notas %>% filter(Género == "Femenino") %>% filter(`Prueba 1` >= 4.0)
+```
+
+*Mención especial merece el último comando*. Filtrar usando un criterio compuesto por dos condiciones que se deben satisfacer simultáneamente, es equivalente a filtrar por el primer criterio y luego filtrar la tabla de datos resultante por el segundo criterio. ¡Es un buen ejemplo de las pipes en acción!
+
+Si se quiere seleccionar a los alumnos cuya edad está entre 25 y 30 años, se puede usar el comando `between()` en la condición:
+
+```{r}
+notas %>% filter(between(Edad, 25, 30))
+```
+
+Para filtrar strings que contienen algún texto en particular se puede usar el método `str_detect()`. Por ejemplo, se puede seleccionar sólo a aquellos alumnos que tengan nombre “María” o “José”:
+
+```{r}
+notas %>% filter(str_detect(Nombre, "María") | str_detect(Nombre, "José"))
+```
+
+Si se queire filtrar usando algunos valores particulares de las variables, usamos la condición de pertenencia usando la expresión `%in%`. Por ejemplo, el seleccionar a los alumnos de Chile y Costa Rica:
+
+```{r}
+notas %>% filter(País %in% c("Chile", "Costa Rica"))
+```
+
+Este comando es equivalente a:
+
+```{r}
+notas %>% filter(País == "Chile" | País == "Costa Rica")
+```
+
+### Subconjuntos por posición
+
+Otra forma de elegir filas en una tabla de datos es mediante su ubicación en la misma. En este sentido, se emplea las funciones `head()` y `tail()`, que proporcionan las primeras filas (cabeza) o las últimas filas (cola) de la tabla. Este argumento se puede ejemplificar de la siguiente manera:
+
+Si se quiere obtener los 3 primeros alumnos de lista:
+
+```{r}
+notas %>% head(3)
+```
+
+O los últimos 4 alumnos de la lista:
+
+```{r}
+notas %>% tail(4)
+```
+
+## Subconjuntos de columnas
+
+La elección de ciertas columnas o variables es otra labor valiosa. Lo logramos mediante el comando `select()`. Este comando nos permite elegir por nombre o por posición.
+
+### Selección de columnas por nombre
+
+En esta situación, el criterio de selección se manifiesta mediante los nombres de las variables. Por ejemplo, si deseamos disponer de una tabla que solo incluya el nombre y la edad de los estudiantes:
+
+```{r}
+notas %>% select(Nombre, Edad)
+```
+
+Nota: El resultado de este comando es una tabla de datos **que tiene menos columnas pero la misma cantidad de filas que antes**.
+
+La forma general en la que usamos el comando `select()` en esta caso es:
+
+> `datos %>% select(variable1, variable2, ..., variablek)`
+
+Por ejemplo, si se quiere selecionar las columnas Nombre, País y Género:
+
+```{r}
+notas %>% select(Nombre, País, Género)
+```
+
+Por otra parte, también se puede aprovechar de cambiar el orden y los nombres de las columnas, junto con seleccionar:
+
+```{r}
+notas %>% select(Nombre, prueba2 = `Prueba 2`, prueba1 = `Prueba 1`)
+```
+
+También se puede usar `select()` para eliminar columnas, seleccionando todas las columnas de la tabla de datos menos ciertas columnas específicas, a las cuales anteponemos un signo `-`:
+
+```{r}
+notas %>% select(-País)
+```
+
+### Selección de columnas por condición
+
+En este caso se usa una condición sobre los nombres de las variables. Un ejemplo sería seleccionar todas las variables que correspondan a tareas.
+
+La forma general en que se usa el comando `select()` en este caso es:
+
+> `datos %>% select(<condicion>)`
+
+Para realizar este tipo de selección, se puede utilizar los siguiente comandos auxiliares:
+
+* `starts_with()`, `ends_with()`: Chequea si el nombre de una columna comienza o termina con un cierto string o carácter.
+* `contains()`: Chequea si el nombre de una columna contiene un cierto string.
+
+Por ejemplo, si se queire selccionar todas las variables que corresponden a notas de las tareas:
+
+```{r}
+notas %>% select(starts_with("Tarea"))
+```
+
+Se podría seleccionar las columnas que corresponden a segundas evaluaciones (Prueba 2 y Tarea 2), usando como condición que contengan el string “2”:
+
+```{r}
+notas %>% select(contains("2"))
+```
+
+## Cambio de nombre de columnas
+
+Aunque al seleccionar columnas con el comando `select()` tenemos la opción de renombrarlas, el método más cómodo y sugerido para modificar el nombre de una columna es empleando el comando `rename()`.
+
+El método de utilización de este comando es:
+
+> `datos %>% rename(nuevo_nombre_columna = viejo_nombre_columna)`
+
+Es también posible renombrar más de una columna a la vez, entregandos múltiples expresiones `nuevo_nombre_columna = viejo_nombre_columna separadas` por coma.
+
+Por ejemplo, si se quiere quitar los espacios en los nombres de las columnas de tareas, por ejemplo cambiando `Tarea 1` por `Tarea1`:
+
+```{r}
+notas %>% 
+  rename(Tarea1 = `Tarea 1`,
+         Tarea2 = `Tarea 2`,
+         Tarea3 = `Tarea 3`)
+```
+
+## Creación y modificación de columnas
+
+A menudo se desea que las variables de una tabla realicen cálculos o cambios, y finalmente, crear nuevas variables para simplificar y organizar el análisis.
+
+En este contexto, se emplea el comando `mutate()`, de la forma siguiente:
+
+> `datos %>% mutate(variable_resultado = <función de variables existentes>)`
+
+La frase `<función de variables existentes>` se refiere a algún procedimiento o función que se realiza sobre las variables de la base de datos. `variable_resultado` puede ser una variable ya existente (y por lo tanto, se esta redefiniendo sus valores) o el nombre de una variable nueva (dplyr la generará por nosotros). Además, si se descarta la `variable_resultado`, se generará una nueva columna que llevará el mismo nombre que la expresión que emplea para su cálculo.
+
+**Importante**: Cualquier operación o función empleada mediante el comando mutate se aplica a los valores de las variables pertinentes, en orden de fila.
+
+Por ejemplo, si se desea calcular el porcentaje de asistencia de cada alumno. Para ello se debe dividir la columna Asistencia por el total de clases (el curso cuenta con 16 clases):
+
+```{r}
+notas %>% mutate(Asistencia = Asistencia / 16 * 100)  %>% 
+  select(Nombre, Asistencia)
+```
+
+Aclarar que en esta situación, se ha guardado el resultado de la operación `Asistencia / 16 * 100` en la misma columna `Asistencia`, y por lo tanto, se ha sustituido sus valores.
+
+Ahora se realiza un cálculo que cada estudiante debe realizar al concluir un curso, para obtener el promedio de las calificaciones de las tareas:
+
+```{r}
+notas %>% 
+  mutate(promedio_tareas = (`Tarea 1`+ `Tarea 2` + `Tarea 3`)/3) %>% 
+  select(Nombre, promedio_tareas)
+```
+
+Notar que Diego tiene un promedio de tareas igual a 5.266667, pero en realidad el valor que se necesita es el promedio aproximado a un decimal. Para ello usamos la función `round()`, la cual recibe como argumento el nombre de la variable que quiere redondear y el número de decimales (*digits*) que se desea conservar:
+
+```{r}
+notas %>% 
+  mutate(promedio_tareas = (`Tarea 1`+ `Tarea 2` + `Tarea 3`)/3) %>% 
+  mutate(promedio_tareas = round(promedio_tareas, digits = 1))
+```
+
+### Creación de columnas usando condiciones lógicas
+
+Existen situaciones donde la nueva columna a formar no puede ser estipulada de forma simple con una expresión algebraica (como una suma, una división, un promedio, etc.) y resulta apropiado emplear una condición lógica para establecer su valor. Por ejemplo, esto ocurre al establecer una nueva columna cuyo propósito es identificar todas las filas en la tabla de datos que cumplen con una condición.
+
+En esta situación, utilizamos el comando `if_else()` en conjunto con `mutate()`.
+
+El formato que se emplea para utilizar este comando es:
+
+> `datos %>% mutate(nueva_columna = if_else(<condicion>, <valor_si_verdadero>, <valor_si_falso>)`
+
+En donde:
+
+* `<condicion>` es una condición lógica, tal y como la que usa con el comando filter().
+* `<valor_si_verdadero>` es el valor que tomará la nueva columna, si la condición se satisface para esta fila.
+* `<valor_si_falso>` es el valor que tomará la nueva columna en caso contrario.
+
+Por ejemplo, si se quiere una nueva columna que indique qué alumnos tienen una nota menor que 4.0 en el Examen:
+
+```{r}
+notas %>% 
+  mutate(reprueba_examen = if_else(Examen < 4.0, 
+                                  "Reprueba Examen", 
+                                  "Aprueba Examen"))
+```
+
+Los valores de salida pueden **ser también numéricos**. Por ejemplo, se quiere crear una nueva columna llamada “Bonus” que contenga cinco décimas extra para todos aquellos alumnos que hayan tenido una asistencia perfecta (16 clases):
+
+```{r}
+notas %>% 
+  mutate(Bonus = if_else(Asistencia == 16, 
+                                  0.5, 
+                                  0))
+```
+
+Finalmente, mencioanr que es posible usar condiciones anidadas. Si se quiere categorizar a los alumnos en tres categorías:
+
+* Asistencia alta: aquellos con una asistencia de 75% o más.
+* Asistencia media: aquellos con una asistencia mayor o igual a 50% y menor que 75%.
+* Asistencia baja: aquellos con una asistencia menor a 50%.
+
+Por lo tanto, se crea una nueva columna llamada “Nivel_Asistencia”:
+
+```{r}
+notas %>% 
+  mutate(Nivel_Asistencia = if_else(Asistencia/16 >= 0.75, 
+                                  "Alta", 
+                                  if_else(Asistencia/16 >= 0.5,
+                                          "Media",
+                                          "Baja")))
+```
+
+## Ordenamiento de filas
+
+A través del comando `arrange()`, se puede ordenar las filas de una tabla de datos a partir de los valores de sus columnas.
+
+El formato en el que usamos este comando es:
+
+> `datos %>% arrange(<expresion1>, <expresion2>, ... , <expresionk>)`
+
+En donde cada uno de `<expresion1>, <expresion2>, … , <expresionk>` puede ser:
+
+* el nombre de una columna, o
+* una función de una o más columnas de la tabla.
+
+El resultado de este comando será la una tabla de datos en donde las filas son ordenadas usando los valores asociados a la primera expresión y, en caso de haber empates, estos se resuelven usando los valores de la segunda expresión. De haber a su vez empates usando los valores de la segunda expresión, se usarán los valores de la tercera expresión y así sucesivamente.
+
+Por defecto `arrange()` ordenará según cada expresión de manera ascendente (de menor a mayor), pero si se quiere que ordene según alguna expresión de manera descendente (de mayor a menor), se puede aplicar la función `desc()` a dicha expresión o anteponiendo el signo `-`.
+
+Tal vez, es más claro ver cómo funciona esto con el siguiente ejemplo, ordenando a los alumnos según su nota en el examen:
+
+```{r}
+notas %>% 
+  select(Nombre, `Prueba 1`, `Prueba 2`, Examen) %>% 
+  arrange(Examen) 
+```
+
+Claro, esto está bien, pero el examen fue difícil y el profesor quiere dar un pequeño premio al alumno que tuvo la mejor nota en el examen. Para ellos se usa `desc()` y así se deja en el primer lugar de la tabla al alumno con el mejor examen:
+
+```{r}
+notas %>% 
+  arrange(desc(Examen)) %>% 
+  select(Nombre, Examen)
+```
+
+Aclarar que se sólo se selecciona a las columnas Nombre y Examen para poder ver mejor o apreciar de mejor manera el uso de la función.
+
+Así también, se puede usar `-` para ordenar de forma decreciente según la nota en el examen:
+
+```{r}
+notas %>% 
+  arrange(-Examen) %>% 
+  select(Nombre, Examen)
+```
+
+¡Oups!, se tien una dificultad dado que tanto Claudia como Federica lograron una calificación de 7.0 en el examen. Dado que el docente solo desea galardonar a un individuo, opta por desempatar considerando el promedio de las pruebas:
+
+```{r}
+notas %>% 
+  arrange(desc(Examen), desc(0.5*`Prueba 1`+ 0.5*`Prueba 2`)) %>% 
+  select(Nombre, Examen)
+```
+
+## Resumiendo una tabla
+
+Otra labor habitual al examinar una tabla de datos consiste en sintetizar los valores de una o varias columnas en un número (o estadístico). Para este fin, se emplea el comando `summarize()`.
+
+Por ejemplo, si se quiere calcular el promedio de la nota en el examen sobre todos los alumnos del curso:
+
+```{r}
+notas %>% summarize(`Promedio Examen` = mean(`Examen`))
+```
+
+Esta operación condensa la columna que contiene las calificaciones de la prueba en un único número (la media). Nota que el resultado de este comando también es una tabla de datos, aunque con una única fila y tantas columnas como los estadísticos de resumen que se necesite calcular.
+
+El formato general en el que se usa este comando es:
+
+> `datos %>% summarize(nombre_resumen1 = <expresion1>, nombre_resumen2 = <expresion2>, ..., nombre_resumenk = <expresionk>)`
+
+Donde `nombre_resumen1, nombre_resumen2, …, nombre_resumenk` son los nombres que los números (o estadísticos) resumen recibirán y `<expresion1>, <expresion2>, …, <expresionk>` son expresiones que consisten en funciones de una o más columnas de la tabla de datos. Estas funciones deben resumir valores de dichas columnas, por lo que su salida debe ser un número.
+
+Algunas funciones útiles que se pueden usar al momento de resumir datos en una tabla son:
+
+* Medidas de tendencia central: `mean()` (promedio) y `median()` (mediana).
+* Medida de dispersión: `sd()` (desviación estándar)
+* Rangos: `min()` (valor mínimo), `max()` (valor máximo), `quantile()` (cuantil)
+* Posición: `first()` (primer valor), `last()` (último valor), `nth()` (n-ésimo valor)
+* Conteo: `n()` (número de valores), `n_distinct()` (número de valores distintos)
+* Lógico: `any()`, `all()`
+
+Por ejemplo, se puede calcular el promedio de las notas en el examen, el promedio de las notas en cada prueba:
+
+```{r}
+notas %>% summarize(`Promedio Examen` = mean(Examen), 
+                    `Promedio Prueba 1` = mean(`Prueba 1`),
+                    `Promedio Prueba 2` = mean(`Prueba 2`))
+```
+
+Se puede observar que las calificaciones fueron más bajas en la Prueba 2. ¿Pero esto se debe a que hubo numerosas calificaciones negativas o solo una muy baja y otras regulares? Por lo tanto, se tienen que examinar más datos estadísticos para las calificaciones de la Prueba 2:
+
+```{r}
+notas %>% 
+  summarize(`Promedio P2` = mean(`Prueba 2`),
+            `D.E. P2` = sd(`Prueba 2`),
+            `Min P2` = min(`Prueba 2`),
+            `Max P2` = max(`Prueba 2`))
+```
+
+Se puede apreciar que la desviación estándar fue del 1.72 y que se registraron las calificaciones entre 1.0 y 7.0. Pero se tienen que ver cómo están distribuidas estas notas, mediante los cuantiles 0.25, 0.5 y 0.75:
+
+```{r}
+notas %>% 
+  summarize(`p-0.25 P2` = quantile(`Prueba 2`, 0.25),
+            `p-0.5 P2` = quantile(`Prueba 2`, 0.5),
+            `p-0.75 P2` = quantile(`Prueba 2`, 0.75))
+```
+
+Un 25% de los alumnos tuvo nota menor o igual que 3.64 y un 75% de los alumnos no superó el 5.2 de calificación.
+
+Ahora pues, se puede calcular el porcentaje de alumnos que aprobaron la Prueba 2 (obtuvieron nota mayor o igual a 4.0):
+
+```{r}
+notas %>% summarize(`Aprobados Prueba 2` = sum(`Prueba 2` >= 4.0)/n())
+```
+
+Aclarar que para contar el número de alumnos con nota mayor o igual a 4.0, se ha *sumado* la condición `'Prueba 2' >= 4.0`. Lo que esto hace tras bambalinas es:
+
+* Genera un valor `TRUE` para cada fila (alumno) que satisface la condición y un valor `FALSE` en caso contrario.
+* Luego suma estos valores, interpretando los valores `TRUE` como 1’s y los valores `FALSE` como 0’s.
+
+## Agrupamiento de filas
+
+Una de las ventajas de tener tablas en formato *tidy* es la posibilidad de agrupar filas según su valor en ciertas columnas y luego realizar resúmenes según estos agrupamientos. Para esto utilizamos el comando `group_by()`, de *tidyverse*. Este comando es usualmente usado en conjunto con otro como `summarize()` para obtener estádisticas resumen por grupo.
+
+Por ejemplo, si se quiere ver cuál es el promedio de la nota en el examen pero agrupando a los alumnos por su país de origen:
+
+```{r}
+notas %>%
+  group_by(País) %>% 
+  summarize(`Promedio Examen` = mean(Examen))
+```
+
+Para que nos quede bien claro, se puede ver por ejemplo lo que hizo R para el caso de Chile. El comando `group_by(País)` juntó a todos los alumnos de Chile y luego el comando `summarize(`Promedio Examen` = mean(Examen))` calculó el promedio de la notas en el examen de dichos alumnos.
+
+El formato general para usar este comando es:
+
+> `datos %>% groupby(variable1, variable2, ..., variablek) %>% <comando_resumen>`
+
+Donde `variable1, variable2, …, variablesk` son las variables a partir de las cuales se agruparán las filas y `<comando_resumen>` es otro comando de tidyverse que luego generará un resumen por grupo (usualmente `summarize()`).
+
+Ahora bien, si nos interesa cuál es el promedio de notas por país de origen y género:
+
+```{r}
+notas %>% 
+  group_by(País, Género) %>% 
+  summarize( `Promedio Examen` = mean(Examen))
+```
+
+Se puede ver que sólo en el caso de Chile y Costa Rica hay alumnos como alumnas. En el resto de los países en donde sólo hay alumnos de un género, la tabla resultado sólo muestra una fila para dicha combinación País-Género.
+
+
+
+
